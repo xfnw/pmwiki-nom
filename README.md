@@ -21,13 +21,12 @@ list_tests ... ok
 
 # todo
 ## pmwiki
-* metadata
-* size
+* metadata `(:title stuff:)`
+* text size `[+big+] [++bigger++] [-small-] [--smaller--]`
 * `:term:definition` lists
-* indention and hanging text
-* text size
-* subscript/superscript
-* inserted/deleted (strikethrough)
+* indention and hanging text `-> indented -< hanging`
+* subscript/superscript ` '^superscript^' '_subscript_'`
+* inserted/deleted (strikethrough) `{+inserted+} {-deleted-}`
 ## extensions
-* footnotes
-* citation needed
+* footnotes/citations `[^im a footnote^] references: [^#^]`
+* citation needed `{{cn}} {{cn|date=2022-08-02}} {{cn|date=2022-08-02|reason=a good reason}}`
