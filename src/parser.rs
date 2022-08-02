@@ -86,13 +86,13 @@ use {
 fn bold(input: &str) -> IResult<&str, ICreole<'_>> {
     map(
         delimited(
-            tag("**"),
+            tag("'''"),
             collect_while_parser_fail_or0(
-                alt((value(true, peek(tag("**"))), value(true, peek(char('\n'))))),
+                alt((value(true, peek(tag("'''"))), value(true, peek(char('\n'))))),
                 italic,
                 text,
             ),
-            tag("**"),
+            tag("'''"),
         ),
         ICreole::Bold,
     )(input)
@@ -100,13 +100,13 @@ fn bold(input: &str) -> IResult<&str, ICreole<'_>> {
 fn italic(input: &str) -> IResult<&str, ICreole<'_>> {
     map(
         delimited(
-            tag("//"),
+            tag("''"),
             collect_while_parser_fail_or0(
-                alt((value(true, peek(tag("//"))), value(true, peek(char('\n'))))),
+                alt((value(true, peek(tag("''"))), value(true, peek(char('\n'))))),
                 alt((bold, link)),
                 text,
             ),
-            tag("//"),
+            tag("''"),
         ),
         ICreole::Italic,
     )(input)
@@ -597,17 +597,17 @@ mod tests {
         assert_eq!(try_creoles("t"), Ok(("", vec![Line(vec![Text("t")])])));
 
         assert_eq!(
-            try_creoles("**b**"),
+            try_creoles("'''b'''"),
             Ok(("", vec![Line(vec![Bold(vec![Text("b")])])]))
         );
 
         assert_eq!(
-            try_creoles("//i//"),
+            try_creoles("''i''"),
             Ok(("", vec![Line(vec![Italic(vec![Text("i")])])]))
         );
 
         assert_eq!(
-            try_creoles("a**b**//c//d"),
+            try_creoles("a'''b'''''c''d"),
             Ok((
                 "",
                 vec![Line(vec![
@@ -619,7 +619,7 @@ mod tests {
             ))
         );
         assert_eq!(
-            try_creoles("**a//b//c**"),
+            try_creoles("'''a''b''c'''"),
             Ok((
                 "",
                 vec![Line(vec![Bold(vec![
@@ -720,8 +720,8 @@ mod tests {
         assert_eq!(
             list(
                 "* [[a]]
-** //b//
-** **c**"
+** ''b''
+** '''c'''"
             ),
             Ok((
                 "",
@@ -828,11 +828,11 @@ mod tests {
         init();
         use ICreole::*;
         assert_eq!(
-            take_while_parser_fail(lit, text)("a b **a**"),
+            take_while_parser_fail(lit, text)("a b '''a'''"),
             Ok(("", (Some(Text("a b ")), Some(Bold(vec![Text("a")])),)))
         );
         assert_eq!(
-            collect_opt_pair1(take_while_parser_fail(lit, text))("a b **a**"),
+            collect_opt_pair1(take_while_parser_fail(lit, text))("a b '''a'''"),
             Ok(("", vec![Text("a b "), Bold(vec![Text("a")]),]))
         );
         assert_eq!(
@@ -840,12 +840,12 @@ mod tests {
             Ok(("", vec![Text("a\n"), Heading(1, vec![Text("b")]),]))
         );
         assert_eq!(
-            collect_opt_pair1(take_while_parser_fail(lit, text))("a b **a**"),
+            collect_opt_pair1(take_while_parser_fail(lit, text))("a b '''a'''"),
             Ok(("", vec![Text("a b "), Bold(vec![Text("a")]),]))
         );
         assert_eq!(
             collect_opt_pair1(take_while_parser_fail(lit, text))(
-                "[[a|b]] //Live// Editor ([[c|d]])"
+                "[[a|b]] ''Live'' Editor ([[c|d]])"
             ),
             Ok((
                 "",
@@ -867,40 +867,39 @@ mod tests {
     fn heading_tests() {
         init();
         use ICreole::*;
-        assert_eq!(heading("= "), Ok(("", Heading(1, vec![]))));
-        assert_eq!(heading("= a"), Ok(("", Heading(1, vec![Text("a")]))));
-        assert_eq!(heading("= a ="), Ok(("", Heading(1, vec![Text("a")]))));
+        assert_eq!(heading("!! "), Ok(("", Heading(1, vec![]))));
+        assert_eq!(heading("!! a"), Ok(("", Heading(1, vec![Text("a")]))));
         assert_eq!(
-            heading("= {{{a}}} ="),
+            heading("!! [=a=]"),
             Ok(("", Heading(1, vec![DontFormat("a")])))
         );
         assert_eq!(
-            heading("= [[a]]"),
+            heading("!! [[a]]"),
             Ok(("", Heading(1, vec![Link("a", "a")])))
         );
         assert_eq!(
-            heading("= a:[[a]]"),
+            heading("!! a:[[a]]"),
             Ok(("", Heading(1, vec![Text("a:"), Link("a", "a")])))
         );
         assert_eq!(
-            try_creoles("= a"),
+            try_creoles("!! a"),
             Ok(("", vec![Heading(1, vec![Text("a")])]))
         );
         assert_eq!(
-            try_creoles("= a:[[a]]"),
+            try_creoles("!! a:[[a]]"),
             Ok(("", vec![Heading(1, vec![Text("a:"), Link("a", "a")])]))
         );
 
-        assert_eq!(heading("=== b"), Ok(("", Heading(3, vec![Text("b")]))));
-        assert_eq!(heading("==== c"), Ok(("", Heading(4, vec![Text("c")]))));
-        assert_eq!(creoles("== b"), vec![Heading(2, vec![Text("b")])]);
-        assert_eq!(creoles("=== c"), vec![Heading(3, vec![Text("c")])]);
+        assert_eq!(heading("!!!! b"), Ok(("", Heading(3, vec![Text("b")]))));
+        assert_eq!(heading("!!!!! c"), Ok(("", Heading(4, vec![Text("c")]))));
+        assert_eq!(creoles("!!! b"), vec![Heading(2, vec![Text("b")])]);
+        assert_eq!(creoles("!!!! c"), vec![Heading(3, vec![Text("c")])]);
 
         assert_eq!(
-            try_creoles("= [[a]]//a"),
+            try_creoles("!! [[a]]//a"),
             Ok(("", vec![Heading(1, vec![Link("a", "a"), Text("//a")])]))
         );
-        assert_eq!(try_creoles("= [[http://www.wikicreole.org|Creole]] //Live// Editor ([[https://github.com/chidea/wasm-creole-live-editor|github]])"), Ok(("", vec![
+        assert_eq!(try_creoles("!! [[http://www.wikicreole.org|Creole]] ''Live'' Editor ([[https://github.com/chidea/wasm-creole-live-editor|github]])"), Ok(("", vec![
       Heading(1, vec![
         Link("http://www.wikicreole.org", "Creole"),
         Text(" "),
@@ -934,7 +933,7 @@ mod tests {
         init();
         use ICreole::*;
         assert_eq!(
-            table_header_row("|=a|=|=c|"),
+            table_header_row("||!a||!||!c||"),
             Ok((
                 "",
                 TableHeaderRow(vec![
@@ -945,7 +944,7 @@ mod tests {
             ))
         );
         assert_eq!(
-            table("|=a|=|=c|"),
+            table("||!a||!||!c||"),
             Ok((
                 "",
                 Table(vec![TableHeaderRow(vec![
@@ -963,10 +962,10 @@ mod tests {
 
         assert_eq!(
             table(
-                "|=|=table|=header| 
-|a|table|row| 
-|b|{{{ // don't format // }}}|{{{ ** me ** }}}|
-|c||empty|"
+                "||!||!table||!header|| 
+||a||table||row|| 
+||b||[= // don't format // =]||[= ** me ** =]||
+||c||||empty||"
             ),
             Ok((
                 "",
@@ -996,9 +995,9 @@ mod tests {
         );
         assert_eq!(
             try_creoles(
-                "|=|=a|=b|
-|0|1|2|
-|3|4|5|"
+                "||!||!a||!b||
+||0||1||2||
+||3||4||5||"
             ),
             Ok((
                 "",
@@ -1027,16 +1026,16 @@ mod tests {
     fn image_tests() {
         init();
         use ICreole::*;
-        assert_eq!(image("{{a.jpg}}"), Ok(("", Image("a.jpg", ""))));
-        assert_eq!(image("{{a.jpg|label}}"), Ok(("", Image("a.jpg", "label"))));
-        assert_eq!(creoles("{{a.jpg}}"), vec![Line(vec![Image("a.jpg", "")])]);
+        assert_eq!(image("[{a.jpg}]"), Ok(("", Image("a.jpg", ""))));
+        assert_eq!(image("[{a.jpg|label}]"), Ok(("", Image("a.jpg", "label"))));
+        assert_eq!(creoles("[{a.jpg}]"), vec![Line(vec![Image("a.jpg", "")])]);
         assert_eq!(
-            creoles("{{a.jpg|label}}"),
+            creoles("[{a.jpg|label}]"),
             vec![Line(vec![Image("a.jpg", "label")])]
         );
 
         assert_eq!(
-            creoles("{{a.jpg|[[label]]}}"),
+            creoles("[{a.jpg|[[label]]}]"),
             vec![Line(vec![Image("a.jpg", "[[label]]")])]
         );
     }
@@ -1074,11 +1073,11 @@ mod tests {
         init();
         use ICreole::*;
         assert_eq!(
-            try_creoles("= 大"),
+            try_creoles("!! 大"),
             Ok(("", vec![Heading(1, vec![Text("大")])]))
         );
         assert_eq!(
-            try_creoles("= a\n= b\n----"),
+            try_creoles("!! a\n!! b\n----"),
             Ok((
                 "",
                 vec![
@@ -1090,9 +1089,9 @@ mod tests {
         );
         assert_eq!(
             try_creoles(
-                "= t
+                "!! t
 
-= A"
+!! A"
             ),
             Ok((
                 "",
