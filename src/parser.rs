@@ -414,7 +414,7 @@ fn collect_while_parser_fail0<'a>(
 fn heading(input: &str) -> IResult<&str, IPmwiki> {
     map(
         separated_pair(
-            map(many_m_n(1, 6, char('=')), |s| s.len()),
+            map(many_m_n(2, 7, char('!')), |s| s.len()-1),
             char(' '),
             alt((take_until("\n"), rest)),
         ),
@@ -440,7 +440,7 @@ fn heading(input: &str) -> IResult<&str, IPmwiki> {
 }
 fn dont_format(input: &str) -> IResult<&str, IPmwiki> {
     map(
-        delimited(tag("{{{"), take_until("}}}"), tag("}}}")),
+        delimited(tag("[="), take_until("=]"), tag("=]")),
         IPmwiki::DontFormat,
     )(input)
 }
