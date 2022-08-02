@@ -1,5 +1,5 @@
 [package]
-name = "creole-nom"
+name = "pmwiki-nom"
 version = "1.0.9"
 authors = ["chidea"]
 edition = "2021"
