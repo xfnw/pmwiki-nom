@@ -1,36 +1,21 @@
-# creole-nom
-WikiCreole markup language parser by nom
+# pmwiki-nom
+nom parser for a subset of pmwiki-like markup language
 
-### WikiCreole 1.0 markup support list
- - [x] italic
- - [x] bold
- - [x] bullet list
- - [x] numbered list
- - [x] link
- - [x] link with name
- - [x] heading
- - [x] linebreak
- - [x] force linebreak
- - [x] horizontal line
- - [x] image
- - [x] image with title
- - [x] table
- - [x] nowiki (don't format)
+note that this deviates from pmwiki's image formatting since
+pmwiki's image format is inconsistent and weird
 
-### Strict 1.0 (from [test cases](http://www.wikicreole.org/wiki/Creole1.0TestCases))
- - [x] ignore equal sign at end of heading
- - [x] inline nowiki
- - [x] nowiki in table
- - [x] allow spaces at end of table row
- - [x] allow spaces at start of list row
- - [ ] tilde escape
- - [ ] free link
- - [x] italic link
- - [ ] italic/bold extend across line
- - [ ] interwiki link
+status:
+```
+image_tests ... ok
+linebreak_tests ... ok
+link_tests ... ok
+heading_tests ... ok
+mixed_tests ... ok
+other_tests ... ok
+table_tests ... FAILED
+parser_tests ... ok
+text_style_tests ... ok
+text_tests ... ok
+list_tests ... ok
+```
 
-### Extended features over 1.0
- - [x] link/image/bold/italic in heading/list/table
- - [ ] link in image title
- - [ ] image in link title
- - [ ] text colors
