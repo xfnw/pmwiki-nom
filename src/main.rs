@@ -1,9 +1,9 @@
-fn hello_parser(i: &str) -> nom::IResult<&str, &str> {
-    nom::bytes::complete::tag("hello")(i)
-}
+pub mod pmwiki;
+pub mod parser;
 
 fn main() {
-    println!("{:?}", hello_parser("hello"));
-    println!("{:?}", hello_parser("hello world"));
-    println!("{:?}", hello_parser("goodbye hello again"));
+    use parser::pmwikis;
+    println!("{:?}", pmwikis("hello"));
+    println!("{:?}", pmwikis("!! im a heading"));
+    println!("{:?}", pmwikis("''goodbye'' hello '''again'''"));
 }
