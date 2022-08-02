@@ -212,12 +212,12 @@ fn link(input: &str) -> IResult<&str, IPmwiki> {
 fn image(input: &str) -> IResult<&str, IPmwiki> {
     map(
         delimited(
-            tag("{{"),
+            tag("[{"),
             alt((
                 separated_pair(is_not("{}|\n"), tag("|"), is_not("{}\n")),
                 map(is_not("{}\n"), |src: &str| (src, "")),
             )),
-            tag("}}"),
+            tag("}]"),
         ),
         |(src, label)| IPmwiki::Image(src, label),
     )(input)
@@ -836,7 +836,7 @@ mod tests {
             Ok(("", vec![Text("a b "), Bold(vec![Text("a")]),]))
         );
         assert_eq!(
-            collect_opt_pair1(take_while_parser_fail(pmwiki_inner, text))("a\n= b"),
+            collect_opt_pair1(take_while_parser_fail(pmwiki_inner, text))("a\n!! b"),
             Ok(("", vec![Text("a\n"), Heading(1, vec![Text("b")]),]))
         );
         assert_eq!(
