@@ -1,8 +1,8 @@
-pub mod creole;
+pub mod pmwiki;
 pub mod parser;
 
 pub mod prelude {
-    pub use crate::parser::{creoles, try_creoles};
-    // pub use crate::creole::{Creole, Creoles, };
-    pub use crate::creole::ICreole;
+    pub use crate::parser::{pmwikis, try_pmwikis};
+    // pub use crate::pmwiki::{Pmwiki, Pmwikis, };
+    pub use crate::pmwiki::IPmwiki;
 }

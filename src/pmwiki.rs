@@ -3,18 +3,18 @@ use std::fmt::Debug;
 
 #[cfg(not(feature = "html"))]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum ICreole<'a> {
+pub enum IPmwiki<'a> {
     Text(&'a str),
-    Line(Vec<ICreole<'a>>),
-    Bold(Vec<ICreole<'a>>),
-    Italic(Vec<ICreole<'a>>),
+    Line(Vec<IPmwiki<'a>>),
+    Bold(Vec<IPmwiki<'a>>),
+    Italic(Vec<IPmwiki<'a>>),
     #[cfg(feature = "font-color")]
     Color(&'a str, &'a str),
-    BulletList(Vec<ICreole<'a>>),
-    NumberedList(Vec<ICreole<'a>>),
-    ListItem(Vec<ICreole<'a>>),
+    BulletList(Vec<IPmwiki<'a>>),
+    NumberedList(Vec<IPmwiki<'a>>),
+    ListItem(Vec<IPmwiki<'a>>),
     Link(&'a str, &'a str),
-    Heading(u8, Vec<ICreole<'a>>),
+    Heading(u8, Vec<IPmwiki<'a>>),
     Silentbreak,
     ForceLinebreak,
     HorizontalLine,
@@ -24,11 +24,11 @@ pub enum ICreole<'a> {
     #[cfg(feature = "link-button")]
     LinkButton(&'a str, &'a str, &'a str),
     DontFormat(&'a str),
-    Table(Vec<ICreole<'a>>),
-    TableHeaderRow(Vec<ICreole<'a>>),
-    TableHeaderCell(Vec<ICreole<'a>>),
-    TableRow(Vec<ICreole<'a>>),
-    TableCell(Vec<ICreole<'a>>),
+    Table(Vec<IPmwiki<'a>>),
+    TableHeaderRow(Vec<IPmwiki<'a>>),
+    TableHeaderCell(Vec<IPmwiki<'a>>),
+    TableRow(Vec<IPmwiki<'a>>),
+    TableCell(Vec<IPmwiki<'a>>),
 }
 
-impl Eq for ICreole<'_> {}
+impl Eq for IPmwiki<'_> {}

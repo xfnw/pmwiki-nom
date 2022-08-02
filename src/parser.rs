@@ -2,7 +2,7 @@
 #[allow(unused_imports)]
 use log::{debug, error, info};
 use {
-    crate::creole::ICreole,
+    crate::pmwiki::IPmwiki,
     nom::{
         branch::alt,
         bytes::complete::{
@@ -83,7 +83,7 @@ use {
     },
 };
 
-fn bold(input: &str) -> IResult<&str, ICreole<'_>> {
+fn bold(input: &str) -> IResult<&str, IPmwiki<'_>> {
     map(
         delimited(
             tag("'''"),
@@ -94,10 +94,10 @@ fn bold(input: &str) -> IResult<&str, ICreole<'_>> {
             ),
             tag("'''"),
         ),
-        ICreole::Bold,
+        IPmwiki::Bold,
     )(input)
 }
-fn italic(input: &str) -> IResult<&str, ICreole<'_>> {
+fn italic(input: &str) -> IResult<&str, IPmwiki<'_>> {
     map(
         delimited(
             tag("''"),
@@ -108,13 +108,13 @@ fn italic(input: &str) -> IResult<&str, ICreole<'_>> {
             ),
             tag("''"),
         ),
-        ICreole::Italic,
+        IPmwiki::Italic,
     )(input)
 }
 
-fn text_style(input: &str) -> IResult<&str, ICreole<'_>> {
+fn text_style(input: &str) -> IResult<&str, IPmwiki<'_>> {
     alt((
-        value(ICreole::ForceLinebreak, tag("\\\\")),
+        value(IPmwiki::ForceLinebreak, tag("\\\\")),
         bold,
         italic,
         // #[cfg(feature="font-color")]
@@ -125,7 +125,7 @@ fn text_style(input: &str) -> IResult<&str, ICreole<'_>> {
 fn list_head_char(input: &str) -> IResult<&str, char> {
     one_of("*#")(input)
 }
-fn list(input: &str) -> IResult<&str, ICreole> {
+fn list(input: &str) -> IResult<&str, IPmwiki> {
     let input = input.trim_start();
     let (_, head) = list_head_char(input)?;
     let (r, lines) = separated_list0(
@@ -151,7 +151,7 @@ fn list(input: &str) -> IResult<&str, ICreole> {
 
 fn _list<'a>(
     head_tag: &'a str,
-) -> impl FnMut(Vec<&'a str>) -> Result<ICreole, nom::Err<nom::error::Error<&'a str>>> {
+) -> impl FnMut(Vec<&'a str>) -> Result<IPmwiki, nom::Err<nom::error::Error<&'a str>>> {
     move |input: Vec<&str>| {
         let head_space = format!("{} ", head_tag);
         let mut rst = vec![];
@@ -165,7 +165,7 @@ fn _list<'a>(
             // debug!("list line : {}", line);
             if line.starts_with(&head_space) {
                 // sibling
-                if let Ok((_, v)) = map(collect_while_parser_fail0(lit, text), ICreole::ListItem)(
+                if let Ok((_, v)) = map(collect_while_parser_fail0(lit, text), IPmwiki::ListItem)(
                     &line[head_space.len()..],
                 ) {
                     rst.push(v);
@@ -189,14 +189,14 @@ fn _list<'a>(
             }
         }
         Ok(if head_tag.ends_with('*') {
-            ICreole::BulletList(rst)
+            IPmwiki::BulletList(rst)
         } else {
-            ICreole::NumberedList(rst)
+            IPmwiki::NumberedList(rst)
         })
     }
 }
 
-fn link(input: &str) -> IResult<&str, ICreole> {
+fn link(input: &str) -> IResult<&str, IPmwiki> {
     map(
         delimited(
             tag("[["),
@@ -206,10 +206,10 @@ fn link(input: &str) -> IResult<&str, ICreole> {
             )),
             tag("]]"),
         ),
-        |(link, label)| ICreole::Link(link, label),
+        |(link, label)| IPmwiki::Link(link, label),
     )(input)
 }
-fn image(input: &str) -> IResult<&str, ICreole> {
+fn image(input: &str) -> IResult<&str, IPmwiki> {
     map(
         delimited(
             tag("{{"),
@@ -219,27 +219,27 @@ fn image(input: &str) -> IResult<&str, ICreole> {
             )),
             tag("}}"),
         ),
-        |(src, label)| ICreole::Image(src, label),
+        |(src, label)| IPmwiki::Image(src, label),
     )(input)
 }
 
-fn lit(input: &str) -> IResult<&str, ICreole> {
+fn lit(input: &str) -> IResult<&str, IPmwiki> {
     alt((link, image, text_style))(input)
 }
-fn dlit(input: &str) -> IResult<&str, ICreole> {
+fn dlit(input: &str) -> IResult<&str, IPmwiki> {
     alt((dont_format, lit))(input)
 }
-fn text(input: &str) -> IResult<&str, ICreole> {
+fn text(input: &str) -> IResult<&str, IPmwiki> {
     map(verify(rest, |s: &str| !s.is_empty()), |s: &str| {
-        ICreole::Text(s)
+        IPmwiki::Text(s)
     })(input)
 }
-fn take_dlit_text_until0<'a>() -> impl FnMut(&'a str) -> IResult<&'a str, Vec<ICreole>> {
+fn take_dlit_text_until0<'a>() -> impl FnMut(&'a str) -> IResult<&'a str, Vec<IPmwiki>> {
     collect_opt_pair0(take_while_parser_fail(dlit, text))
 }
 fn take_dlit_text_until_peek_char0<'a>(
     until_char: char,
-) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<ICreole>> {
+) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<IPmwiki>> {
     collect_opt_pair0(take_while_parser_fail_or(
         value(true, peek(char(until_char))),
         dlit,
@@ -248,9 +248,9 @@ fn take_dlit_text_until_peek_char0<'a>(
 }
 
 fn take_while_parser_fail<'a>(
-    mut parser: impl FnMut(&'a str) -> IResult<&'a str, ICreole<'a>>,
-    mut fail_parser: impl FnMut(&'a str) -> IResult<&'a str, ICreole<'a>>,
-) -> impl FnMut(&'a str) -> IResult<&'a str, (Option<ICreole<'a>>, Option<ICreole<'a>>)> {
+    mut parser: impl FnMut(&'a str) -> IResult<&'a str, IPmwiki<'a>>,
+    mut fail_parser: impl FnMut(&'a str) -> IResult<&'a str, IPmwiki<'a>>,
+) -> impl FnMut(&'a str) -> IResult<&'a str, (Option<IPmwiki<'a>>, Option<IPmwiki<'a>>)> {
     move |input: &str| {
         // debug!("take_while_parser_fail input : {}", input);
         // let mut i = input;
@@ -296,13 +296,13 @@ fn take_while_parser_fail<'a>(
 }
 
 fn collect_opt_pair0<'a>(
-    parser: impl FnMut(&'a str) -> IResult<&'a str, (Option<ICreole<'a>>, Option<ICreole<'a>>)>,
-) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<ICreole<'a>>> {
+    parser: impl FnMut(&'a str) -> IResult<&'a str, (Option<IPmwiki<'a>>, Option<IPmwiki<'a>>)>,
+) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<IPmwiki<'a>>> {
     alt((collect_opt_pair1(parser), success(vec![])))
 }
 fn collect_opt_pair1<'a>(
-    mut parser: impl FnMut(&'a str) -> IResult<&'a str, (Option<ICreole<'a>>, Option<ICreole<'a>>)>,
-) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<ICreole<'a>>> {
+    mut parser: impl FnMut(&'a str) -> IResult<&'a str, (Option<IPmwiki<'a>>, Option<IPmwiki<'a>>)>,
+) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<IPmwiki<'a>>> {
     move |input: &str| {
         let mut rst = vec![];
         let mut i = input;
@@ -341,9 +341,9 @@ fn collect_opt_pair1<'a>(
 
 fn take_while_parser_fail_or<'a>(
     mut term_parser: impl FnMut(&'a str) -> IResult<&'a str, bool>,
-    mut parser: impl FnMut(&'a str) -> IResult<&'a str, ICreole<'a>>,
-    mut fail_parser: impl FnMut(&'a str) -> IResult<&'a str, ICreole<'a>>,
-) -> impl FnMut(&'a str) -> IResult<&'a str, (Option<ICreole<'a>>, Option<ICreole<'a>>)> {
+    mut parser: impl FnMut(&'a str) -> IResult<&'a str, IPmwiki<'a>>,
+    mut fail_parser: impl FnMut(&'a str) -> IResult<&'a str, IPmwiki<'a>>,
+) -> impl FnMut(&'a str) -> IResult<&'a str, (Option<IPmwiki<'a>>, Option<IPmwiki<'a>>)> {
     move |input: &str| {
         let mut l = 0;
         for (i, c) in input.char_indices().by_ref() {
@@ -375,43 +375,43 @@ fn take_while_parser_fail_or<'a>(
 
 // fn take_while_parser_fail_or_peek_tag<'a>(
 //     term_tag: &'static str,
-//     parser: impl FnMut(&'a str) -> IResult<&'a str, ICreole<'a>>,
-//     fail_parser: impl FnMut(&'a str) -> IResult<&'a str, ICreole<'a>>,
-// ) -> impl FnMut(&'a str) -> IResult<&'a str, (Option<ICreole<'a>>, Option<ICreole<'a>>)> {
+//     parser: impl FnMut(&'a str) -> IResult<&'a str, IPmwiki<'a>>,
+//     fail_parser: impl FnMut(&'a str) -> IResult<&'a str, IPmwiki<'a>>,
+// ) -> impl FnMut(&'a str) -> IResult<&'a str, (Option<IPmwiki<'a>>, Option<IPmwiki<'a>>)> {
 //     take_while_parser_fail_or(value(true, peek(tag(term_tag))), parser, fail_parser)
 // }
 
 fn collect_while_parser_fail_or0<'a>(
     term_parser: impl FnMut(&'a str) -> IResult<&'a str, bool>,
-    parser: impl FnMut(&'a str) -> IResult<&'a str, ICreole<'a>>,
-    fail_parser: impl FnMut(&'a str) -> IResult<&'a str, ICreole<'a>>,
-) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<ICreole<'a>>> {
+    parser: impl FnMut(&'a str) -> IResult<&'a str, IPmwiki<'a>>,
+    fail_parser: impl FnMut(&'a str) -> IResult<&'a str, IPmwiki<'a>>,
+) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<IPmwiki<'a>>> {
     collect_opt_pair0(take_while_parser_fail_or(term_parser, parser, fail_parser))
 }
 
 fn collect_while_parser_fail0<'a>(
-    parser: impl FnMut(&'a str) -> IResult<&'a str, ICreole<'a>>,
-    fail_parser: impl FnMut(&'a str) -> IResult<&'a str, ICreole<'a>>,
-) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<ICreole<'a>>> {
+    parser: impl FnMut(&'a str) -> IResult<&'a str, IPmwiki<'a>>,
+    fail_parser: impl FnMut(&'a str) -> IResult<&'a str, IPmwiki<'a>>,
+) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<IPmwiki<'a>>> {
     collect_opt_pair0(take_while_parser_fail(parser, fail_parser))
 }
 
 // #[cfg(feature="link-button")]
-// fn link_button(input: &str) -> IResult<&str, ICreole> {
+// fn link_button(input: &str) -> IResult<&str, IPmwiki> {
 //   map(delimited(tag("[{"), alt((
 //     separated_pair(is_not("|]}\n"), tag("|"), is_not("|]}\n")),
 //     map(is_not("]}\n"), |label: &str| -> (&str, &str) { (label, label) }),
-//   )), tag("]}")), |(link, label)| ICreole::LinkButton(label, link, ""))(input)
+//   )), tag("]}")), |(link, label)| IPmwiki::LinkButton(label, link, ""))(input)
 // }
 // #[cfg(feature="font-color")]
-// fn font_color(input: &str) -> IResult<&str, ICreole> {
+// fn font_color(input: &str) -> IResult<&str, IPmwiki> {
 //   map(delimited(tag("[{"), alt((
 //     separated_pair(is_not("|]}\n"), tag("|"), is_not("|]}\n")),
 //     map(is_not("]}\n"), |label: &str| -> (&str, &str) { (label, label) }),
-//   )), tag("]}")), |(link, label)| ICreole::Link(label, link))(input)
+//   )), tag("]}")), |(link, label)| IPmwiki::Link(label, link))(input)
 // }
 
-fn heading(input: &str) -> IResult<&str, ICreole> {
+fn heading(input: &str) -> IResult<&str, IPmwiki> {
     map(
         separated_pair(
             map(many_m_n(1, 6, char('=')), |s| s.len()),
@@ -419,7 +419,7 @@ fn heading(input: &str) -> IResult<&str, ICreole> {
             alt((take_until("\n"), rest)),
         ),
         |(level, body): (usize, &str)| {
-            ICreole::Heading(
+            IPmwiki::Heading(
                 level as u8,
                 if let Ok((_, v)) = take_dlit_text_until0()({
                     let body = body.trim_end();
@@ -438,23 +438,23 @@ fn heading(input: &str) -> IResult<&str, ICreole> {
         },
     )(input)
 }
-fn dont_format(input: &str) -> IResult<&str, ICreole> {
+fn dont_format(input: &str) -> IResult<&str, IPmwiki> {
     map(
         delimited(tag("{{{"), take_until("}}}"), tag("}}}")),
-        ICreole::DontFormat,
+        IPmwiki::DontFormat,
     )(input)
 }
 
-fn table_header_cell_inner(input: &str) -> IResult<&str, ICreole> {
+fn table_header_cell_inner(input: &str) -> IResult<&str, IPmwiki> {
     map(
         take_dlit_text_until_peek_char0('|'),
-        ICreole::TableHeaderCell,
+        IPmwiki::TableHeaderCell,
     )(input)
 }
-fn table_cell_inner(input: &str) -> IResult<&str, ICreole> {
-    map(take_dlit_text_until_peek_char0('|'), ICreole::TableCell)(input)
+fn table_cell_inner(input: &str) -> IResult<&str, IPmwiki> {
+    map(take_dlit_text_until_peek_char0('|'), IPmwiki::TableCell)(input)
 }
-fn table_header_row(input: &str) -> IResult<&str, ICreole> {
+fn table_header_row(input: &str) -> IResult<&str, IPmwiki> {
     let (left, line) = preceded(
         tag("|="),
         map(
@@ -473,11 +473,11 @@ fn table_header_row(input: &str) -> IResult<&str, ICreole> {
     // debug!("table_header_row line : {}", line);
 
     let (_, rst) = map(separated_list1(tag("|="), table_header_cell_inner), |v| {
-        ICreole::TableHeaderRow(v)
+        IPmwiki::TableHeaderRow(v)
     })(line)?;
     Ok((left, rst))
 }
-fn table_cell_row(input: &str) -> IResult<&str, ICreole> {
+fn table_cell_row(input: &str) -> IResult<&str, IPmwiki> {
     let (left, line) = preceded(
         char('|'),
         map(
@@ -494,11 +494,11 @@ fn table_cell_row(input: &str) -> IResult<&str, ICreole> {
     )(input)?;
     // debug!("table_cell_row : {}", line);
     let (_, rst) = map(separated_list1(tag("|"), table_cell_inner), |v| {
-        ICreole::TableRow(v)
+        IPmwiki::TableRow(v)
     })(line)?;
     Ok((left, rst))
 }
-fn table(input: &str) -> IResult<&str, ICreole> {
+fn table(input: &str) -> IResult<&str, IPmwiki> {
     let mut rst = vec![];
     let mut rest = input;
     // debug!("table input : {}", input);
@@ -512,10 +512,10 @@ fn table(input: &str) -> IResult<&str, ICreole> {
         separated_list1(char('\n'), table_cell_row)(input)
     } {
         // debug!("body : {:?}", body);
-        return Ok((rest, ICreole::Table([rst, body].concat())));
+        return Ok((rest, IPmwiki::Table([rst, body].concat())));
     } else if !rst.is_empty() {
         // debug!("no body found, result : {:?}", rst);
-        return Ok((rest, ICreole::Table(rst)));
+        return Ok((rest, IPmwiki::Table(rst)));
     };
     // debug!("table : {:?}", rst);
     if rst.is_empty() {
@@ -524,32 +524,32 @@ fn table(input: &str) -> IResult<&str, ICreole> {
             code: ErrorKind::Tag,
         }))
     } else {
-        Ok((rest, ICreole::Table(rst)))
+        Ok((rest, IPmwiki::Table(rst)))
     }
 }
 
 // #[cfg(feature="fold")]
-// fn fold(input: &str) -> IResult<&str, ICreole> {
-//   map(map_parser(tag("---<"), rest), |rest| ICreole::Fold(rest))(input)
+// fn fold(input: &str) -> IResult<&str, IPmwiki> {
+//   map(map_parser(tag("---<"), rest), |rest| IPmwiki::Fold(rest))(input)
 // }
 
-fn line(input: &str) -> IResult<&str, ICreole> {
+fn line(input: &str) -> IResult<&str, IPmwiki> {
     map(
         collect_while_parser_fail_or0(
             alt((
                 value(true, pair(char('\n'), peek(char('\n')))),
-                value(true, peek(preceded(char('\n'), creole_inner))),
+                value(true, peek(preceded(char('\n'), pmwiki_inner))),
             )),
             dlit,
             text,
         ),
-        ICreole::Line,
+        IPmwiki::Line,
     )(input)
 }
-fn creole_inner(input: &str) -> IResult<&str, ICreole> {
+fn pmwiki_inner(input: &str) -> IResult<&str, IPmwiki> {
     alt((
         value(
-            ICreole::HorizontalLine,
+            IPmwiki::HorizontalLine,
             terminated(tag("----"), alt((peek(tag("\n")), eof))),
         ),
         heading,
@@ -559,12 +559,12 @@ fn creole_inner(input: &str) -> IResult<&str, ICreole> {
     ))(input)
 }
 
-pub fn try_creoles(input: &str) -> IResult<&str, Vec<ICreole>> {
-    separated_list0(char('\n'), alt((creole_inner, line)))(input)
+pub fn try_pmwikis(input: &str) -> IResult<&str, Vec<IPmwiki>> {
+    separated_list0(char('\n'), alt((pmwiki_inner, line)))(input)
 }
 
-pub fn creoles(input: &str) -> Vec<ICreole> {
-    if let Ok((_, v)) = try_creoles(input) {
+pub fn pmwikis(input: &str) -> Vec<IPmwiki> {
+    if let Ok((_, v)) = try_pmwikis(input) {
         v
     } else {
         vec![]
@@ -574,7 +574,7 @@ pub fn creoles(input: &str) -> Vec<ICreole> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::creole::ICreole;
+    use crate::pmwiki::IPmwiki;
 
     fn init() {
         let _ =
@@ -586,28 +586,28 @@ mod tests {
     #[test]
     fn text_tests() {
         init();
-        use ICreole::*;
-        assert_eq!(creoles("ab1"), vec![Line(vec![Text("ab1")])]);
+        use IPmwiki::*;
+        assert_eq!(pmwikis("ab1"), vec![Line(vec![Text("ab1")])]);
     }
 
     #[test]
     fn text_style_tests() {
         init();
-        use ICreole::*;
-        assert_eq!(try_creoles("t"), Ok(("", vec![Line(vec![Text("t")])])));
+        use IPmwiki::*;
+        assert_eq!(try_pmwikis("t"), Ok(("", vec![Line(vec![Text("t")])])));
 
         assert_eq!(
-            try_creoles("'''b'''"),
+            try_pmwikis("'''b'''"),
             Ok(("", vec![Line(vec![Bold(vec![Text("b")])])]))
         );
 
         assert_eq!(
-            try_creoles("''i''"),
+            try_pmwikis("''i''"),
             Ok(("", vec![Line(vec![Italic(vec![Text("i")])])]))
         );
 
         assert_eq!(
-            try_creoles("a'''b'''''c''d"),
+            try_pmwikis("a'''b'''''c''d"),
             Ok((
                 "",
                 vec![Line(vec![
@@ -619,7 +619,7 @@ mod tests {
             ))
         );
         assert_eq!(
-            try_creoles("'''a''b''c'''"),
+            try_pmwikis("'''a''b''c'''"),
             Ok((
                 "",
                 vec![Line(vec![Bold(vec![
@@ -634,16 +634,16 @@ mod tests {
     #[test]
     fn linebreak_tests() {
         init();
-        use ICreole::*;
+        use IPmwiki::*;
         assert_eq!(
-            try_creoles("a\\\\b"),
+            try_pmwikis("a\\\\b"),
             Ok(("", vec![Line(vec![Text("a"), ForceLinebreak, Text("b"),])]))
         );
 
-        assert_eq!(creoles("a\\b"), vec![Line(vec![Text("a\\b")])]);
+        assert_eq!(pmwikis("a\\b"), vec![Line(vec![Text("a\\b")])]);
 
         assert_eq!(
-            try_creoles("a\nb\n\nc"),
+            try_pmwikis("a\nb\n\nc"),
             Ok(("", vec![Line(vec![Text("a\nb")]), Line(vec![Text("c")])]))
         );
     }
@@ -651,7 +651,7 @@ mod tests {
     #[test]
     fn list_tests() {
         init();
-        use ICreole::*;
+        use IPmwiki::*;
         assert_eq!(list("* "), Ok(("", BulletList(vec![ListItem(vec![])]))));
         assert_eq!(
             list("* a"),
@@ -753,7 +753,7 @@ mod tests {
             ))
         );
         assert_eq!(
-            creoles(
+            pmwikis(
                 "* a
 ** aa
 ** ab
@@ -768,7 +768,7 @@ mod tests {
             ])]
         );
         assert_eq!(
-            try_creoles(
+            try_pmwikis(
                 "* a
 *# a1
 *# a2
@@ -826,7 +826,7 @@ mod tests {
     #[test]
     fn parser_tests() {
         init();
-        use ICreole::*;
+        use IPmwiki::*;
         assert_eq!(
             take_while_parser_fail(lit, text)("a b '''a'''"),
             Ok(("", (Some(Text("a b ")), Some(Bold(vec![Text("a")])),)))
@@ -836,7 +836,7 @@ mod tests {
             Ok(("", vec![Text("a b "), Bold(vec![Text("a")]),]))
         );
         assert_eq!(
-            collect_opt_pair1(take_while_parser_fail(creole_inner, text))("a\n= b"),
+            collect_opt_pair1(take_while_parser_fail(pmwiki_inner, text))("a\n= b"),
             Ok(("", vec![Text("a\n"), Heading(1, vec![Text("b")]),]))
         );
         assert_eq!(
@@ -866,7 +866,7 @@ mod tests {
     #[test]
     fn heading_tests() {
         init();
-        use ICreole::*;
+        use IPmwiki::*;
         assert_eq!(heading("!! "), Ok(("", Heading(1, vec![]))));
         assert_eq!(heading("!! a"), Ok(("", Heading(1, vec![Text("a")]))));
         assert_eq!(
@@ -882,30 +882,30 @@ mod tests {
             Ok(("", Heading(1, vec![Text("a:"), Link("a", "a")])))
         );
         assert_eq!(
-            try_creoles("!! a"),
+            try_pmwikis("!! a"),
             Ok(("", vec![Heading(1, vec![Text("a")])]))
         );
         assert_eq!(
-            try_creoles("!! a:[[a]]"),
+            try_pmwikis("!! a:[[a]]"),
             Ok(("", vec![Heading(1, vec![Text("a:"), Link("a", "a")])]))
         );
 
         assert_eq!(heading("!!!! b"), Ok(("", Heading(3, vec![Text("b")]))));
         assert_eq!(heading("!!!!! c"), Ok(("", Heading(4, vec![Text("c")]))));
-        assert_eq!(creoles("!!! b"), vec![Heading(2, vec![Text("b")])]);
-        assert_eq!(creoles("!!!! c"), vec![Heading(3, vec![Text("c")])]);
+        assert_eq!(pmwikis("!!! b"), vec![Heading(2, vec![Text("b")])]);
+        assert_eq!(pmwikis("!!!! c"), vec![Heading(3, vec![Text("c")])]);
 
         assert_eq!(
-            try_creoles("!! [[a]]//a"),
+            try_pmwikis("!! [[a]]//a"),
             Ok(("", vec![Heading(1, vec![Link("a", "a"), Text("//a")])]))
         );
-        assert_eq!(try_creoles("!! [[http://www.wikicreole.org|Creole]] ''Live'' Editor ([[https://github.com/chidea/wasm-creole-live-editor|github]])"), Ok(("", vec![
+        assert_eq!(try_pmwikis("!! [[http://www.wikipmwiki.org|Pmwiki]] ''Live'' Editor ([[https://github.com/chidea/wasm-pmwiki-live-editor|github]])"), Ok(("", vec![
       Heading(1, vec![
-        Link("http://www.wikicreole.org", "Creole"),
+        Link("http://www.wikipmwiki.org", "Pmwiki"),
         Text(" "),
         Italic(vec![Text("Live")]),
         Text(" Editor ("),
-        Link("https://github.com/chidea/wasm-creole-live-editor", "github"),
+        Link("https://github.com/chidea/wasm-pmwiki-live-editor", "github"),
         Text(")"),
     ])])));
     }
@@ -913,14 +913,14 @@ mod tests {
     #[test]
     fn link_tests() {
         init();
-        use ICreole::*;
-        assert_eq!(creoles("[[a]]"), vec![Line(vec![Link("a", "a")])]);
+        use IPmwiki::*;
+        assert_eq!(pmwikis("[[a]]"), vec![Line(vec![Link("a", "a")])]);
         assert_eq!(
-            creoles("[[https://google.com|google]]"),
+            pmwikis("[[https://google.com|google]]"),
             vec![Line(vec![Link("https://google.com", "google")])]
         );
         assert_eq!(link("[[a]]"), Ok(("", Link("a", "a"))));
-        assert_eq!(creoles("[a]"), vec![Line(vec![Text("[a]")])]);
+        assert_eq!(pmwikis("[a]"), vec![Line(vec![Text("[a]")])]);
         assert_eq!(link("[[link|label]]"), Ok(("", Link("link", "label"))));
         assert_eq!(
             link("[[https://google.com|google]]"),
@@ -931,7 +931,7 @@ mod tests {
     #[test]
     fn table_tests() {
         init();
-        use ICreole::*;
+        use IPmwiki::*;
         assert_eq!(
             table_header_row("||!a||!||!c||"),
             Ok((
@@ -994,7 +994,7 @@ mod tests {
             ))
         );
         assert_eq!(
-            try_creoles(
+            try_pmwikis(
                 "||!||!a||!b||
 ||0||1||2||
 ||3||4||5||"
@@ -1025,38 +1025,38 @@ mod tests {
     #[test]
     fn image_tests() {
         init();
-        use ICreole::*;
+        use IPmwiki::*;
         assert_eq!(image("[{a.jpg}]"), Ok(("", Image("a.jpg", ""))));
         assert_eq!(image("[{a.jpg|label}]"), Ok(("", Image("a.jpg", "label"))));
-        assert_eq!(creoles("[{a.jpg}]"), vec![Line(vec![Image("a.jpg", "")])]);
+        assert_eq!(pmwikis("[{a.jpg}]"), vec![Line(vec![Image("a.jpg", "")])]);
         assert_eq!(
-            creoles("[{a.jpg|label}]"),
+            pmwikis("[{a.jpg|label}]"),
             vec![Line(vec![Image("a.jpg", "label")])]
         );
 
         assert_eq!(
-            creoles("[{a.jpg|[[label]]}]"),
+            pmwikis("[{a.jpg|[[label]]}]"),
             vec![Line(vec![Image("a.jpg", "[[label]]")])]
         );
     }
     #[test]
     fn other_tests() {
         init();
-        use ICreole::*;
-        assert_eq!(try_creoles(""), Ok(("", vec![Line(vec![])])));
-        assert_eq!(try_creoles("----"), Ok(("", vec![HorizontalLine])));
+        use IPmwiki::*;
+        assert_eq!(try_pmwikis(""), Ok(("", vec![Line(vec![])])));
+        assert_eq!(try_pmwikis("----"), Ok(("", vec![HorizontalLine])));
         assert_eq!(
-            try_creoles("-----"),
+            try_pmwikis("-----"),
             Ok(("", vec![Line(vec![Text("-----")])]))
         );
-        assert_eq!(creoles("----"), vec![HorizontalLine]);
-        // assert_eq!(creoles("----a"), vec![Line(vec![Text("----a")])]);
+        assert_eq!(pmwikis("----"), vec![HorizontalLine]);
+        // assert_eq!(pmwikis("----a"), vec![Line(vec![Text("----a")])]);
         assert_eq!(
-            creoles("----\na"),
+            pmwikis("----\na"),
             vec![HorizontalLine, Line(vec![Text("a")])]
         );
-        // assert_eq!(try_creoles("a\n----\nb"), Ok(("", vec![Line(vec![Text("a\n")]), HorizontalLine, Line(vec![Text("b")])])));
-        // //     assert_eq!(creoles("{{a.jpg|b}}"), vec![Image("a.jpg", "b")]);
+        // assert_eq!(try_pmwikis("a\n----\nb"), Ok(("", vec![Line(vec![Text("a\n")]), HorizontalLine, Line(vec![Text("b")])])));
+        // //     assert_eq!(pmwikis("{{a.jpg|b}}"), vec![Image("a.jpg", "b")]);
         //     assert_eq!(dont_format("{{{
         // == [[no]]:\n//**don't** format//
         // }}}"), Ok(("", DontFormat("\n== [[no]]:\n//**don't** format//"))));
@@ -1065,19 +1065,19 @@ mod tests {
     //   // #[cfg(feature="extended")]
     //   // #[test]
     //   // fn extended_tests() { init();
-    //   //   // assert_eq!(creoles("[{a|b|c}]"), vec![LinkButton("a", "b", "c")]);
+    //   //   // assert_eq!(pmwikis("[{a|b|c}]"), vec![LinkButton("a", "b", "c")]);
     //   //   assert_eq!(link_button("[{a|b|c}]"), LinkButton("a", "b", "c"));
     //   // }
     #[test]
     fn mixed_tests() {
         init();
-        use ICreole::*;
+        use IPmwiki::*;
         assert_eq!(
-            try_creoles("!! 大"),
+            try_pmwikis("!! 大"),
             Ok(("", vec![Heading(1, vec![Text("大")])]))
         );
         assert_eq!(
-            try_creoles("!! a\n!! b\n----"),
+            try_pmwikis("!! a\n!! b\n----"),
             Ok((
                 "",
                 vec![
@@ -1088,7 +1088,7 @@ mod tests {
             ))
         );
         assert_eq!(
-            try_creoles(
+            try_pmwikis(
                 "!! t
 
 !! A"
@@ -1102,7 +1102,7 @@ mod tests {
                 ]
             ))
         );
-        //     // assert_eq!(try_creoles("a[[/|home]]{{a.jpg}}"), Ok(("", vec![
+        //     // assert_eq!(try_pmwikis("a[[/|home]]{{a.jpg}}"), Ok(("", vec![
         //     //   Text("a"),
         //     //   Link("/", "home"),
         //     //   Image("a.jpg", ""),

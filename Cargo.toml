@@ -1,13 +1,13 @@
 [package]
 name = "pmwiki-nom"
-version = "1.0.9"
-authors = ["chidea"]
+version = "0.1.0"
+authors = ["chidea","xfnw"]
 edition = "2021"
 license = "MIT"
-description = "WikiCreole markup language parser library by nom"
-repository = "https://github.com/chidea/creole-nom"
+description = "Pmwiki markup language parser library by nom"
+repository = "https://github.com/xfnw/pmwiki-nom"
 readme = "README.md"
-keywords = ["wiki", "markdown", "parser", "creole", "nom"]
+keywords = ["wiki", "markdown", "parser", "pmwiki", "nom"]
 categories = ["parser-implementations"]
 exclude = [ "*.sh", "*.ps1" ]
 
