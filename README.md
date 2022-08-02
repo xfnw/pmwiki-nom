@@ -19,3 +19,15 @@ text_tests ... ok
 list_tests ... ok
 ```
 
+# todo
+## pmwiki
+* metadata
+* size
+* `:term:definition` lists
+* indention and hanging text
+* text size
+* subscript/superscript
+* inserted/deleted (strikethrough)
+## extensions
+* footnotes
+* citation needed
